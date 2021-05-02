@@ -5,9 +5,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,12 +29,33 @@ public class MainController {
 	
     List<Coordinates> coordinatesApi = new ArrayList<Coordinates>();
 	List<Results> results = new ArrayList<Results>();
-//	List<Results> topTenResults = new ArrayList<Results>();
-	List<Results> topTenResults = new ArrayList<Results>();
+	List<String> topTenResults = new ArrayList<String>();
 	
 	
+//	Get input coordinates and provide the results accordingly.
+	@RequestMapping(value = "/coordinates", method = RequestMethod.POST)
+	@ResponseBody
+	public List<String> getCoordinates(@RequestBody ObjectNode objectNode) {
+
+		double lattitude = objectNode.get("lattitude").asDouble();
+	   double longitude = objectNode.get("longitude").asDouble();
+	   jsonParse();
+	   results.clear();
+	   calculateDistance(lattitude,longitude);
+	   results.sort(Comparator.comparingDouble(Results::getDistance));
+	   getTenData(results);
+	   
+	   return topTenResults;
+	}
+	
+	public void getTenData(List<Results> result) {
+		topTenResults.clear();
+		for(int i = 0; i<10;i++) {
+			topTenResults.add(result.get(i).getOutputForUser());
+		}
+	}
+
 //	Getting data from api and parsing it for distance calculation
-	@GetMapping("/jsonParse")
 	public String jsonParse(){		
 		JsonNode resourcesNode = null;
 		JsonNode rootNode = null;
@@ -60,54 +79,22 @@ public class MainController {
 			String title = propertiesNode.path("title").toString();
 			double longitudeApi = coordinates.get(0).asDouble();
 			double lattitudeApi = coordinates.get(1).asDouble();
+			
 //			CHecking of duplicate data, if the earthquake occurs in same area 
 //			twice(matching lattitude and longitude) then the later one is avoided
-			Coordinates testData = new Coordinates(title, lattitudeApi, longitudeApi);
 			
-			if(coordinatesApi.contains(testData)) {
-				System.out.println("Yes it contains");
+			boolean samePlaceExists = coordinatesApi.stream().anyMatch(item -> lattitudeApi == (item.getLattitude()) && longitudeApi == (item.getLongitude()) );
+			if(samePlaceExists) {
+//				System.out.println("Earthquake occur at same place");
+				
 			}else {
-				System.out.println("No it does not");
+				coordinatesApi.add(new Coordinates(title, lattitudeApi, longitudeApi));
 			}
-//			coordinatesApi.getClass().getField(title);
 			
-			coordinatesApi.add(new Coordinates(title, lattitudeApi, longitudeApi));
-//			System.out.println(title + "||"+ distance+"km");
-		}
+	}
 		
 		return"Parsed";
 	}	
-	
-	public String getCoordinates() {
-		
-		return"Coordinates";
-	}
-	
-//	Get input coordinates and provide the results accordingly.
-	@RequestMapping(value = "/coordinates", method = RequestMethod.POST)
-	@ResponseBody
-	public List<Results> getCoordinates(@RequestBody ObjectNode objectNode) {
-	   // And then you can call parameters from objectNode
-	   double lattitude = objectNode.get("lattitude").asDouble();
-	   double longitude = objectNode.get("longitude").asDouble();
-	   jsonParse();
-	   results.clear();
-	   calculateDistance(lattitude,longitude);
-	   results.sort(Comparator.comparingDouble(Results::getDistance));
-	   getTenData(results);
-	   
-	   return topTenResults;
-	}
-	
-	public void getTenData(List<Results> result) {
-//		Set hashResult = new HashSet(result);
-		topTenResults.clear();
-		for(int i = 0; i<10;i++) {
-			
-			topTenResults.add(result.get(i));
-//			if(topTenResults.)
-		}
-	}
 	
 	
 //	Calculation of distance from lattitude and longitude
@@ -126,7 +113,7 @@ public class MainController {
 		               Math.sin(dLng/2) * Math.sin(dLng/2);
 		    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 		    float distance = (float) (earthRadius * c);
-		    results.add(new Results(title, distance,title+"||"+distance,apiLat,apiLong));
+		    results.add(new Results(title, distance,title+"||"+distance+" Km"));
 		    
 		}
 

@@ -1,11 +1,13 @@
 package recruiter.test.controller;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -14,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -27,12 +28,11 @@ import recruiter.test.model.Results;
 @RestController
 public class MainController {
 
-	private double inputLattitue;
-	private double inputLongitude;
-	
 	
     List<Coordinates> coordinatesApi = new ArrayList<Coordinates>();
 	List<Results> results = new ArrayList<Results>();
+//	List<Results> topTenResults = new ArrayList<Results>();
+	List<Results> topTenResults = new ArrayList<Results>();
 	
 	
 //	Getting data from api and parsing it for distance calculation
@@ -60,7 +60,17 @@ public class MainController {
 			String title = propertiesNode.path("title").toString();
 			double longitudeApi = coordinates.get(0).asDouble();
 			double lattitudeApi = coordinates.get(1).asDouble();
-//			double distance = calculateDistance(40.730610,-73.935242,lattitudeApi,longitudeApi);
+//			CHecking of duplicate data, if the earthquake occurs in same area 
+//			twice(matching lattitude and longitude) then the later one is avoided
+			Coordinates testData = new Coordinates(title, lattitudeApi, longitudeApi);
+			
+			if(coordinatesApi.contains(testData)) {
+				System.out.println("Yes it contains");
+			}else {
+				System.out.println("No it does not");
+			}
+//			coordinatesApi.getClass().getField(title);
+			
 			coordinatesApi.add(new Coordinates(title, lattitudeApi, longitudeApi));
 //			System.out.println(title + "||"+ distance+"km");
 		}
@@ -79,26 +89,26 @@ public class MainController {
 	public List<Results> getCoordinates(@RequestBody ObjectNode objectNode) {
 	   // And then you can call parameters from objectNode
 	   double lattitude = objectNode.get("lattitude").asDouble();
-	   inputLattitue = lattitude;
 	   double longitude = objectNode.get("longitude").asDouble();
-	   inputLongitude = longitude;
 	   jsonParse();
 	   results.clear();
 	   calculateDistance(lattitude,longitude);
+	   results.sort(Comparator.comparingDouble(Results::getDistance));
+	   getTenData(results);
 	   
-//	   return("Got two Coordinates"+inputLattitue+"::"+inputLongitude);
-	   
-	   return results;
+	   return topTenResults;
 	}
 	
-//	@GetMapping("/checkDataFromApi")
-//	public List<Coordinates> testData() {
-//		System.out.println(coordinatesApi.size());
-//		for(int i = 0 ; i<coordinatesApi.size();i++) {
-//			System.out.println(coordinatesApi.get(i).getTitle());
-//		}
-//		return coordinatesApi;
-//	}
+	public void getTenData(List<Results> result) {
+//		Set hashResult = new HashSet(result);
+		topTenResults.clear();
+		for(int i = 0; i<10;i++) {
+			
+			topTenResults.add(result.get(i));
+//			if(topTenResults.)
+		}
+	}
+	
 	
 //	Calculation of distance from lattitude and longitude
 	public void calculateDistance(double inputLat, double inputLong) {
@@ -116,7 +126,7 @@ public class MainController {
 		               Math.sin(dLng/2) * Math.sin(dLng/2);
 		    double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 		    float distance = (float) (earthRadius * c);
-		    results.add(new Results(title, distance,title+"||"+distance));
+		    results.add(new Results(title, distance,title+"||"+distance,apiLat,apiLong));
 		    
 		}
 
